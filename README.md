@@ -1,26 +1,51 @@
-# Simulador de Maquina de Turing - INFO 139
+# Simulador de Maquina de Turing - Interfaz grafica
 
-Programa en Python que simula una Maquina de Turing reconocedora de lenguajes, con cinta semi-infinita.
+Interfaz didactica (Tkinter) para el simulador de Maquina de Turing 
+## Archivos
 
-## Como ejecutar
+- `interfaz.py` ........ interfaz grafica (definicion de la maquina + evaluacion de palabras)
+- `main.py` ........ motor de la MT
+
+## Ejecutar desde el codigo fuente
+
+Requiere Python 3 con Tkinter (incluido en la instalacion estandar de Windows y macOS;
+en Linux: `sudo apt install python3-tk`).
 
 ```
-python main.py
+python interfaz.py
 ```
 
-El programa pide por teclado los estados, transiciones y la palabra a evaluar, y dice si pertenece o no al lenguaje.
+## Generar el ejecutable
 
-## Como funciona
+El ejecutable se crea con PyInstaller. IMPORTANTE: PyInstaller produce un
+ejecutable para el sistema operativo donde se compila. Para obtener un `.exe`
+de Windows hay que compilar EN Windows.
 
-La cinta se representa como una lista que se expande hacia la derecha cuando es necesario. El cabezal no puede salir por la izquierda.
+1. Instalar PyInstaller:
 
-En cada paso se lee el simbolo bajo el cabezal, se busca la transicion correspondiente y se aplica. Si no hay transicion definida, la palabra se rechaza.
+   ```
+   pip install pyinstaller
+   ```
 
-Para evitar loops infinitos se guarda un historial de configuraciones (cinta, posicion del cabezal, estado). Si se repite alguna, se aborta.
+2. Compilar (desde la carpeta del codigo fuente):
 
-## Estructuras usadas
+   ```
+   pyinstaller --onefile --windowed --name SimuladorMT --add-data "main.py:." interfaz.py
+   ```
 
-- Estados: `set`
-- Estado inicial: `str`
-- Transiciones: `dict` anidado, `transiciones[estado][simbolo] = (nuevo_estado, simbolo_escrito, movimiento)`
-- Cinta: `list`
+   En Windows, el separador de `--add-data` es `;` en lugar de `:`:
+
+   ```
+   pyinstaller --onefile --windowed --name SimuladorMT --add-data "main.py;." interfaz.py
+   ```
+
+   El ejecutable queda en la carpeta `dist/`.
+
+## Uso de la interfaz
+
+1. Pestaña "Definir maquina": ingresa estados, estado inicial, finales, alfabeto
+   de cinta, simbolo blanco, alfabeto de entrada y las transiciones (una por una).
+   El boton "Cargar ejemplo" precarga una maquina que reconoce a^n b^n.
+2. Pulsa "Construir maquina".
+3. Pestaña "Evaluar palabras": escribe palabras y obten si pertenecen o no al
+   lenguaje, junto con la cinta final y un historial de las pruebas.
