@@ -20,6 +20,7 @@ PALETA = {
 }
 
 FUENTE = "Segoe UI"
+SIMBOLO_BLANCO = "B"  # fijo, igual que en main.py::ingresar_datos_mt_estricto
 
 
 class Tooltip:
@@ -56,8 +57,8 @@ class SimuladorApp:
         self.raiz = raiz
         self.raiz.title("Simulador de Maquina de Turing  -  INFO 139")
         self.raiz.configure(bg=PALETA["fondo"])
-        self.raiz.geometry("960x720")
         self.raiz.minsize(820, 600)
+        self._centrar_ventana(960, 720)
 
         self.maquina_lista = False
         self.datos = {}
@@ -65,11 +66,19 @@ class SimuladorApp:
         self._estilos()
         self._construir()
 
+    def _centrar_ventana(self, ancho, alto):
+        self.raiz.update_idletasks()
+        pantalla_w = self.raiz.winfo_screenwidth()
+        pantalla_h = self.raiz.winfo_screenheight()
+        x = max(0, (pantalla_w - ancho) // 2)
+        y = max(0, (pantalla_h - alto) // 2 - 20)
+        self.raiz.geometry(f"{ancho}x{alto}+{x}+{y}")
+
     # ----------------------------------------------------------------- estilo
     def _estilos(self):
         s = ttk.Style()
         s.theme_use("clam")
-        s.configure("TNotebook", background=PALETA["fondo"], borderwidth=0)
+        s.configure("TNotebook", background=PALETA["fondo"], borderwidth=0, tabmargins=(2, 2, 2, 0))
         s.configure(
             "TNotebook.Tab", background=PALETA["rosa"],
             foreground=PALETA["texto"], font=(FUENTE, 11, "bold"),
@@ -79,7 +88,31 @@ class SimuladorApp:
             "TNotebook.Tab",
             background=[("selected", PALETA["lila"])],
             foreground=[("selected", "#ffffff")],
+            # Por defecto 'clam' agranda la pestaña seleccionada para que
+            # se solape con el panel de contenido. Lo anulamos para que
+            # ambas pestañas midan siempre lo mismo, sin importar cual
+            # este activa.
+            expand=[("selected", (0, 0, 0, 0))],
         )
+        # El layout por defecto de 'clam' dibuja un anillo de foco
+        # (Notebook.focus) dentro de la pestaña activa, lo que le resta
+        # espacio de padding y la hace ver mas chica que la inactiva.
+        # Redefinimos el layout sin ese elemento para que ambas pestañas
+        # midan exactamente lo mismo.
+        s.layout("TNotebook.Tab", [
+            ("Notebook.tab", {
+                "sticky": "nswe",
+                "children": [
+                    ("Notebook.padding", {
+                        "side": "top",
+                        "sticky": "nswe",
+                        "children": [
+                            ("Notebook.label", {"side": "top", "sticky": ""}),
+                        ],
+                    }),
+                ],
+            }),
+        ])
 
     def _titulo(self, padre, texto, sub=None):
         cont = tk.Frame(padre, bg=PALETA["fondo"])
@@ -119,11 +152,104 @@ class SimuladorApp:
         )
         return e
 
+    def _dibujar_gatito(self, canvas, cx, cy, tam=14, cuerpo="#f3ead6", puntos="#6b4a3a",
+                         mejillas="#f6b8c9", ojos="#5ec3ea"):
+        """Dibuja un gatito siames tierno con formas vectoriales (ovalos y
+        triangulos): cuerpo color crema, 'puntos' oscuros en orejas/mascara/
+        nariz (la marca caracteristica de la raza) y ojos azules. No depende
+        de fuentes de emoji, asi se ve igual en cualquier sistema."""
+        t = tam
+
+        # orejas (siames: solidas, del color oscuro de los "puntos")
+        for lado in (-1, 1):
+            canvas.create_polygon(
+                cx + lado * t * 0.85, cy - t * 0.25,
+                cx + lado * t * 0.30, cy - t * 1.35,
+                cx + lado * t * 0.05, cy - t * 0.45,
+                fill=puntos, outline=puntos, width=1,
+            )
+
+        # cabeza (base crema)
+        canvas.create_oval(
+            cx - t, cy - t * 0.55, cx + t, cy + t * 0.95,
+            fill=cuerpo, outline="#e0d2b8", width=1,
+        )
+
+        # mascara oscura alrededor de los ojos (tipico del siames)
+        canvas.create_oval(
+            cx - t * 0.68, cy - t * 0.12, cx + t * 0.68, cy + t * 0.40,
+            fill=puntos, outline="",
+        )
+
+        # mejillas sonrosadas (se asoman bajo la mascara)
+        canvas.create_oval(
+            cx - t * 0.85, cy + t * 0.18, cx - t * 0.35, cy + t * 0.55,
+            fill=mejillas, outline="",
+        )
+        canvas.create_oval(
+            cx + t * 0.35, cy + t * 0.18, cx + t * 0.85, cy + t * 0.55,
+            fill=mejillas, outline="",
+        )
+
+        # ojitos azules almendrados (marca distintiva del siames)
+        canvas.create_oval(
+            cx - t * 0.45, cy - t * 0.02, cx - t * 0.16, cy + t * 0.26,
+            fill=ojos, outline="",
+        )
+        canvas.create_oval(
+            cx + t * 0.16, cy - t * 0.02, cx + t * 0.45, cy + t * 0.26,
+            fill=ojos, outline="",
+        )
+        # pupilas
+        canvas.create_oval(
+            cx - t * 0.35, cy + t * 0.02, cx - t * 0.24, cy + t * 0.20,
+            fill=PALETA["texto"], outline="",
+        )
+        canvas.create_oval(
+            cx + t * 0.24, cy + t * 0.02, cx + t * 0.35, cy + t * 0.20,
+            fill=PALETA["texto"], outline="",
+        )
+        # brillito en los ojos
+        canvas.create_oval(
+            cx - t * 0.33, cy + t * 0.00, cx - t * 0.25, cy + t * 0.08,
+            fill="white", outline="",
+        )
+        canvas.create_oval(
+            cx + t * 0.26, cy + t * 0.00, cx + t * 0.34, cy + t * 0.08,
+            fill="white", outline="",
+        )
+
+        # nariz (tambien de color "punto")
+        canvas.create_polygon(
+            cx - t * 0.10, cy + t * 0.32,
+            cx + t * 0.10, cy + t * 0.32,
+            cx, cy + t * 0.45,
+            fill=puntos, outline="",
+        )
+
+        # bigotes
+        for lado in (-1, 1):
+            canvas.create_line(
+                cx + lado * t * 0.45, cy + t * 0.40,
+                cx + lado * t * 1.25, cy + t * 0.30,
+                fill="#c9b79a", width=1,
+            )
+            canvas.create_line(
+                cx + lado * t * 0.45, cy + t * 0.50,
+                cx + lado * t * 1.25, cy + t * 0.50,
+                fill="#c9b79a", width=1,
+            )
+
     # ------------------------------------------------------------- estructura
     def _construir(self):
         cabecera = tk.Frame(self.raiz, bg=PALETA["lila"], height=70)
         cabecera.pack(fill="x")
         cabecera.pack_propagate(False)
+        gato_header = tk.Canvas(
+            cabecera, width=54, height=54, bg=PALETA["lila"], highlightthickness=0,
+        )
+        gato_header.pack(side="right", padx=18)
+        self._dibujar_gatito(gato_header, 27, 30, tam=14)
         tk.Label(
             cabecera, text="✿  Maquina de Turing", bg=PALETA["lila"],
             fg="white", font=(FUENTE, 20, "bold"),
@@ -144,6 +270,19 @@ class SimuladorApp:
 
         self._tab_definicion()
         self._tab_simulacion()
+
+        # --- gatitos de decoracion (no interfieren con la logica ni el scroll) ---
+        gato_esq1 = tk.Canvas(
+            self.tab_def, width=42, height=42, bg=PALETA["fondo"], highlightthickness=0,
+        )
+        gato_esq1.place(relx=1.0, rely=0.0, anchor="ne", x=-34, y=8)
+        self._dibujar_gatito(gato_esq1, 21, 24, tam=11)
+
+        gato_esq2 = tk.Canvas(
+            self.tab_def, width=42, height=42, bg=PALETA["fondo"], highlightthickness=0,
+        )
+        gato_esq2.place(relx=0.0, rely=1.0, anchor="sw", x=8, y=-8)
+        self._dibujar_gatito(gato_esq2, 21, 24, tam=11)
 
     # ------------------------------------------------------------- pestaña 1
     def _tab_definicion(self):
@@ -169,25 +308,19 @@ class SimuladorApp:
         
         self._titulo(
             cont, "Define los componentes de tu maquina",
-            "Completa cada campo. Pasa el cursor sobre el simbolo (?) si tienes dudas.",
+            "Completa cada campo. Pasa el cursor sobre el simbolo (?) si tienes dudas.\n"
+            "Los estados, el alfabeto de la cinta, el alfabeto de entrada y el simbolo "
+            "blanco se infieren automaticamente a partir de las transiciones.",
         )
 
         grid = tk.Frame(cont, bg=PALETA["fondo"])
         grid.pack(fill="x")
 
         campos = [
-            ("Estados", "estados",
-             "Todos los estados separados por espacios.  Ej:  q0 q1 q2 qf"),
             ("Estado inicial", "inicial",
-             "Estado donde comienza la maquina.  Debe estar en la lista de estados.  Ej:  q0"),
+             "Estado donde comienza la maquina.  Ej:  q0"),
             ("Estados finales", "finales",
              "Estados de aceptacion separados por espacios.  Ej:  qf"),
-            ("Alfabeto de la cinta", "cinta",
-             "Todos los simbolos que pueden aparecer en la cinta, incluido el blanco.  Ej:  0 1 X Y B"),
-            ("Simbolo blanco", "blanco",
-             "El simbolo que representa una celda vacia.  Debe estar en el alfabeto de la cinta.  Ej:  B"),
-            ("Alfabeto de entrada", "entrada",
-             "Simbolos validos en las palabras a evaluar (sin el blanco).  Ej:  0 1"),
         ]
 
         self.campos = {}
@@ -289,10 +422,11 @@ class SimuladorApp:
         self.entry_palabra = self._entrada(fila, ancho=34)
         self.entry_palabra.pack(side="left", ipady=4)
         self.entry_palabra.bind("<Return>", lambda _: self._evaluar())
-        self._boton(
+        self.btn_evaluar = self._boton(
             fila, "▶ Evaluar", self._evaluar,
             color=PALETA["lila_oscuro"], ancho=12,
-        ).pack(side="left", padx=8)
+        )
+        self.btn_evaluar.pack(side="left", padx=8)
         tk.Label(
             fila, text="(la palabra vacia se evalua dejando el campo en blanco)",
             bg=PALETA["fondo"], fg=PALETA["texto_suave"], font=(FUENTE, 9),
@@ -316,11 +450,20 @@ class SimuladorApp:
             font=(FUENTE, 11, "bold"),
         )
         cinta_titulo.pack(anchor="w")
-        self.cinta_canvas = tk.Canvas(
-            cont, bg=PALETA["cinta_bg"], height=70, highlightthickness=2,
+        cinta_frame = tk.Frame(
+            cont, bg=PALETA["cinta_bg"], highlightthickness=2,
             highlightbackground=PALETA["borde"],
         )
-        self.cinta_canvas.pack(fill="x", pady=(4, 12))
+        cinta_frame.pack(fill="x", pady=(4, 12))
+        self.cinta_canvas = tk.Canvas(
+            cinta_frame, bg=PALETA["cinta_bg"], height=100, highlightthickness=0,
+        )
+        cinta_scroll = tk.Scrollbar(
+            cinta_frame, orient="horizontal", command=self.cinta_canvas.xview,
+        )
+        self.cinta_canvas.configure(xscrollcommand=cinta_scroll.set)
+        self.cinta_canvas.pack(fill="x", side="top")
+        cinta_scroll.pack(fill="x", side="bottom")
 
         tk.Label(
             cont, text="Historial", bg=PALETA["fondo"], fg=PALETA["texto"],
@@ -370,30 +513,24 @@ class SimuladorApp:
         self.transiciones_crudas.clear()
 
     def _cargar_ejemplo(self):
-        # a^n b^n : reconoce cadenas con igual numero de a seguidas de b
+        # Cadenas binarias con una cantidad PAR de 1s (incluye la cadena vacia).
+        # Maquina de una sola pasada: el estado inicial lee directamente todo
+        # el alfabeto de entrada, por lo que la inferencia automatica
+        # (estados, alfabeto de cinta, alfabeto de entrada) funciona sin ambiguedad.
         self._limpiar_definicion()
         ejemplo = {
-            "estados": "q0 q1 q2 q3 qf",
             "inicial": "q0",
             "finales": "qf",
-            "cinta": "a b X Y B",
-            "blanco": "B",
-            "entrada": "a b",
         }
         for clave, valor in ejemplo.items():
             self.campos[clave].insert(0, valor)
 
         trans = [
-            "q0 a -> q1 X D",
-            "q1 a -> q1 a D",
-            "q1 Y -> q1 Y D",
-            "q1 b -> q2 Y I",
-            "q2 Y -> q2 Y I",
-            "q2 a -> q2 a I",
-            "q2 X -> q0 X D",
-            "q0 Y -> q3 Y D",
-            "q3 Y -> q3 Y D",
-            "q3 B -> qf B D",
+            "q0 0 -> q0 0 D",
+            "q0 1 -> q1 1 D",
+            "q1 0 -> q1 0 D",
+            "q1 1 -> q0 1 D",
+            "q0 B -> qf B D",
         ]
         for t in trans:
             self.transiciones_crudas.append(t)
@@ -401,9 +538,10 @@ class SimuladorApp:
 
         messagebox.showinfo(
             "Ejemplo cargado",
-            "Se cargo una maquina que reconoce el lenguaje  a^n b^n  (n >= 1).\n\n"
-            "Construye la maquina y prueba palabras como  ab,  aabb,  aaabbb\n"
-            "(aceptadas) frente a  aab  o  abb  (rechazadas).",
+            "Se cargo una maquina que reconoce cadenas binarias con una cantidad\n"
+            "PAR de 1s (la cadena vacia tambien se acepta, ya que tiene cero 1s).\n\n"
+            "Construye la maquina y prueba palabras como  11,  1100,  0000\n"
+            "(aceptadas) frente a  1,  100,  111  (rechazadas).",
         )
 
     def _parsear_transicion(self, txt):
@@ -417,45 +555,50 @@ class SimuladorApp:
 
     def _construir_maquina(self):
         try:
-            estados = set(self.campos["estados"].get().strip().split())
             inicial = self.campos["inicial"].get().strip()
             finales = set(self.campos["finales"].get().strip().split())
-            alf_cinta = set(self.campos["cinta"].get().strip().split())
-            blanco = self.campos["blanco"].get().strip()
-            alf_entrada = set(self.campos["entrada"].get().strip().split())
+            blanco = SIMBOLO_BLANCO
 
-            if not estados:
-                raise ValueError("Debes ingresar al menos un estado.")
-            if inicial not in estados:
-                raise ValueError("El estado inicial no esta en el conjunto de estados.")
+            if not inicial:
+                raise ValueError("Debes ingresar el estado inicial.")
             if not finales:
                 raise ValueError("Debes ingresar al menos un estado final.")
-            if not finales.issubset(estados):
-                raise ValueError("Los estados finales deben pertenecer al conjunto de estados.")
-            if not alf_cinta:
-                raise ValueError("El alfabeto de la cinta no puede estar vacio.")
-            if blanco not in alf_cinta:
-                raise ValueError("El simbolo blanco debe estar en el alfabeto de la cinta.")
-            if not alf_entrada:
-                raise ValueError("El alfabeto de entrada no puede estar vacio.")
-            if blanco in alf_entrada:
-                raise ValueError("El alfabeto de entrada no puede incluir el simbolo blanco.")
             if not self.transiciones_crudas:
                 raise ValueError("Debes ingresar al menos una transicion.")
 
-            transiciones = {est: {} for est in estados}
+            transiciones = {}
+            estados = {inicial} | finales
+            alf_cinta = {blanco}
+
             for crudo in self.transiciones_crudas:
                 try:
                     ea, sl, ne, se, mv = self._parsear_transicion(crudo)
                 except ValueError:
                     raise ValueError(f"Transicion con formato invalido:\n  {crudo}")
-                if ea not in estados or ne not in estados:
-                    raise ValueError(f"Estado inexistente en la transicion:\n  {crudo}")
-                if sl not in alf_cinta or se not in alf_cinta:
-                    raise ValueError(f"Simbolo fuera del alfabeto de la cinta:\n  {crudo}")
                 if mv not in ("D", "I"):
                     raise ValueError(f"El movimiento debe ser D o I:\n  {crudo}")
-                transiciones[ea][sl] = (ne, se, mv)
+
+                estados.add(ea)
+                estados.add(ne)
+                alf_cinta.add(sl)
+                alf_cinta.add(se)
+
+                transiciones.setdefault(ea, {})[sl] = (ne, se, mv)
+
+            if inicial not in estados:
+                raise ValueError("El estado inicial debe aparecer en al menos una transicion.")
+            if not finales.issubset(estados):
+                raise ValueError(
+                    "Los estados finales deben aparecer en las transiciones (como origen o destino)."
+                )
+
+            # Alfabeto de entrada: simbolos que el estado inicial es capaz de leer
+            # directamente, excluyendo el blanco (misma inferencia que main.py).
+            alf_entrada = set()
+            if inicial in transiciones:
+                alf_entrada = {s for s in transiciones[inicial].keys() if s != blanco}
+            if not alf_entrada:
+                alf_entrada = {s for s in alf_cinta if s not in (blanco, "X", "Y")}
 
         except ValueError as err:
             messagebox.showerror("Revisa la definicion", str(err))
@@ -475,7 +618,8 @@ class SimuladorApp:
                 f"Estado inicial: {inicial}      "
                 f"Finales: {{{', '.join(sorted(finales))}}}      "
                 f"Blanco: {blanco}\n"
-                f"Alfabeto de entrada: {{{', '.join(sorted(alf_entrada))}}}      "
+                f"Estados detectados: {{{', '.join(sorted(estados))}}}\n"
+                f"Alfabeto de entrada (inferido): {{{', '.join(sorted(alf_entrada))}}}      "
                 f"Transiciones: {len(self.transiciones_crudas)}"
             )
         )
@@ -491,7 +635,7 @@ class SimuladorApp:
 
     # ----------------------------------------------------------- acciones t2
     def _evaluar(self):
-        if not self.maquina_lista:
+        if not self.maquina_lista or getattr(self, "_animando", False):
             return
         palabra = self.entry_palabra.get().strip()
 
@@ -503,15 +647,88 @@ class SimuladorApp:
                 )
                 return
 
-        aceptada, cinta = simular_mt(
+        # El veredicto ACEPTADA/RECHAZADA y la cinta final salen exclusivamente
+        # de tu logica original en main.py -- eso no se toca.
+        aceptada, cinta_final = simular_mt(
             self.datos["inicial"],
             self.datos["finales"],
             self.datos["transiciones"],
             palabra,
             self.datos["blanco"],
         )
-
         mostrada = palabra if palabra else "ε (vacia)"
+
+        # Traza de pasos SOLO para animar al gatito; es un espejo visual del
+        # mismo algoritmo, no reemplaza ni altera el resultado de simular_mt.
+        pasos = self._generar_pasos(
+            self.datos["inicial"], self.datos["finales"],
+            self.datos["transiciones"], palabra, self.datos["blanco"],
+        )
+
+        self.tarjeta.config(highlightbackground=PALETA["borde"])
+        self.resultado_lbl.config(text="Caminando por la cinta...", fg=PALETA["texto_suave"])
+
+        self._animar_gato(pasos, 0, aceptada, cinta_final, mostrada)
+
+    def _generar_pasos(self, inicial, finales, transiciones, palabra, blanco, tope=400):
+        """Reproduce el mismo algoritmo de main.py::simular_mt paso a paso,
+        solo para poder animar al gatito. No decide aceptacion/rechazo."""
+        cinta = list(palabra) if palabra != "" else [blanco]
+        cabezal = 0
+        estado = inicial
+        pasos = [{"cinta": cinta.copy(), "cabezal": cabezal}]
+        historial = set()
+
+        while estado not in finales and len(pasos) <= tope:
+            cinta_str = "".join(cinta)
+            config = (cinta_str, cabezal, estado)
+            if config in historial:
+                break
+            historial.add(config)
+
+            if cabezal >= len(cinta):
+                cinta.append(blanco)
+            elif cabezal < 0:
+                break
+
+            simbolo = cinta[cabezal]
+            if estado in transiciones and simbolo in transiciones[estado]:
+                nuevo_estado, simbolo_escrito, movimiento = transiciones[estado][simbolo]
+                cinta[cabezal] = simbolo_escrito
+                estado = nuevo_estado
+                cabezal += 1 if movimiento == "D" else -1
+                pasos.append({"cinta": cinta.copy(), "cabezal": cabezal})
+            else:
+                break
+
+        # Si la traza es muy larga, la resumimos para que la animacion no
+        # se demore una eternidad (esto es solo cosmetico).
+        MAX_CUADROS = 60
+        if len(pasos) > MAX_CUADROS:
+            paso = len(pasos) / MAX_CUADROS
+            indices = sorted({int(i * paso) for i in range(MAX_CUADROS)} | {len(pasos) - 1})
+            pasos = [pasos[i] for i in indices]
+
+        return pasos
+
+    def _animar_gato(self, pasos, indice, aceptada, cinta_final, mostrada):
+        self._animando = True
+        self.btn_evaluar.config(state="disabled")
+
+        frame = pasos[indice]
+        es_ultimo = indice == len(pasos) - 1
+        self._dibujar_cinta(
+            frame["cinta"], self.datos["blanco"],
+            cabezal=frame["cabezal"], caminando=(not es_ultimo) and (indice % 2 == 0),
+        )
+
+        if not es_ultimo:
+            self.raiz.after(
+                220, lambda: self._animar_gato(pasos, indice + 1, aceptada, cinta_final, mostrada)
+            )
+            return
+
+        # Fin de la animacion: mostramos el veredicto real ya calculado.
         if aceptada:
             self.tarjeta.config(highlightbackground=PALETA["ok"])
             self.resultado_lbl.config(
@@ -525,15 +742,24 @@ class SimuladorApp:
                 fg=PALETA["no"],
             )
 
-        self._dibujar_cinta(cinta, self.datos["blanco"])
-        self._registrar(mostrada, aceptada, cinta)
+        # Redibujamos con el ultimo cuadro de la propia animacion (en vez de
+        # la cinta "recortada" de simular_mt) para que el gatito se quede
+        # sentado justo donde termino, en lugar de desaparecer.
+        self._dibujar_cinta(
+            frame["cinta"], self.datos["blanco"], cabezal=frame["cabezal"], caminando=False,
+        )
+        self._registrar(mostrada, aceptada, cinta_final)
 
-    def _dibujar_cinta(self, cinta, blanco):
+        self.btn_evaluar.config(state="normal")
+        self._animando = False
+
+    def _dibujar_cinta(self, cinta, blanco, cabezal=None, caminando=False):
         self.cinta_canvas.delete("all")
         celdas = list(cinta) if cinta else [blanco]
         ancho = 46
         margen = 12
-        y = 14
+        y = 46
+
         for i, simbolo in enumerate(celdas):
             x = margen + i * ancho
             self.cinta_canvas.create_rectangle(
@@ -544,8 +770,24 @@ class SimuladorApp:
                 x + (ancho - 4) / 2, y + 20, text=simbolo,
                 font=("Consolas", 14, "bold"), fill=PALETA["texto"],
             )
+
+        cx = None
+        if cabezal is not None:
+            idx = max(0, min(cabezal, len(celdas) - 1))
+            cx = margen + idx * ancho + (ancho - 4) / 2
+            cy = (y - 22) - (4 if caminando else 0)  # pequeno salto al "caminar"
+            self._dibujar_gatito(self.cinta_canvas, cx, cy, tam=13)
+
         total = margen * 2 + len(celdas) * ancho
-        self.cinta_canvas.configure(scrollregion=(0, 0, total, 70))
+        ancho_visible = max(self.cinta_canvas.winfo_width(), 1)
+        self.cinta_canvas.configure(scrollregion=(0, 0, max(total, ancho_visible), 90))
+
+        if cx is not None:
+            # mantiene al gatito visible mientras camina por cintas largas
+            frac = max(0.0, min(1.0, (cx - ancho_visible / 2) / max(total, 1)))
+            self.cinta_canvas.xview_moveto(frac)
+        else:
+            self.cinta_canvas.xview_moveto(0)
 
     def _registrar(self, palabra, aceptada, cinta):
         estado = "ACEPTADA" if aceptada else "RECHAZADA"
