@@ -19,7 +19,7 @@ def simular_mt(estado_inicial, estados_finales, transiciones, palabra_entrada, s
 
         historial.add(config)
 
-        # Expandir cinta si el cabezal se va a la derecha
+        # Expandir cinta si el cabezal se va a la derecha (ingresa blancos)
         if cabezal >= len(cinta):
             cinta.append(simbolo_blanco)
         elif cabezal < 0:
@@ -116,7 +116,7 @@ def ingresar_datos_mt_estricto():
     if estado_inicial in transiciones:
         for simbolo in transiciones[estado_inicial].keys():
             if simbolo != simbolo_blanco:
-                alfabeto_entrada.add(sim_simbolo) if 'sim_simbolo' in locals() else alfabeto_entrada.add(simbolo)
+                alfabeto_entrada.add(simbolo)
 
     # Caso de resguardo: si en el estado inicial solo lee el blanco, mapeamos los caracteres 
     # descubiertos en la cinta que no correspondan a símbolos de control clásicos (X, Y) ni al blanco.
@@ -161,11 +161,12 @@ def main():
 
         print("-" * 40)
         if es_aceptada:
-            print("🎉 ACEPTADA. La palabra pertenece al lenguaje.")
+            print("ACEPTADA. La palabra pertenece al lenguaje.")
         else:
-            print("❌ RECHAZADA. La palabra no pertenece al lenguaje.")
+            print("RECHAZADA. La palabra no pertenece al lenguaje.")
         print(f"Cinta final: '{cinta_resultante}'")
         print("-" * 40)
+
 
 
 if __name__ == "__main__":
